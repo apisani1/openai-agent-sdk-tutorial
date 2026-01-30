@@ -52,7 +52,7 @@ from agents import (
 )
 from openai_agent_sdk_tutorial.guardrail import (
     input_guardrail_faul_language,
-    output_guardrail_faul_language,
+    output_guardrail_confidential,
 )
 from openai_agent_sdk_tutorial.hook import (
     MyAgentHook,
@@ -174,7 +174,7 @@ my_agent = Agent(
     model="gpt-5.2",
     tools=[send_contact_request_tool],
     input_guardrails=[input_guardrail_faul_language],
-    output_guardrails=[output_guardrail_faul_language],
+    output_guardrails=[output_guardrail_confidential],
     hooks=MyAgentHook(),
 )
 

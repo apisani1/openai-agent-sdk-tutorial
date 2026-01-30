@@ -15,7 +15,7 @@ load_dotenv(find_dotenv(), override=True)
 
 # Gradio chat interface function requires 2 parameters: message and history
 # but history is managed by the OpenAI Agent SDK instead of Gradio
-async def chat(message: str, history: Any) -> str:  # pylint: disable=unused-arguments
+async def chat(message: str, history: Any) -> str:  # pylint: disable=unused-argument
     return await run_agent(message)
 
 

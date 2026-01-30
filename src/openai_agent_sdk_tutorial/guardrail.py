@@ -123,6 +123,18 @@ class FaulLanguage(BaseModel):
     offense: str
 
 
+class ConfidentialInformation(BaseModel):
+    """Structured output model for confidential information detection.
+
+    Attributes:
+        is_confidential: True if confidential information was detected, False otherwise.
+        details: Description of the detected confidential information, or empty if none found.
+    """
+
+    is_confidential: bool
+    details: str
+
+
 # =============================================================================
 # GUARDRAIL AGENT
 # =============================================================================
@@ -152,10 +164,20 @@ class FaulLanguage(BaseModel):
 # - Using faster/cheaper models for guardrails
 # - Combining with rule-based pre-filters
 
-guardrail_agent = Agent(
+input_guardrail_agent = Agent(
     name="Foul language check",
     instructions="Check if the user is including any foul language in what they want you to do.",
     output_type=FaulLanguage,
+    model="gpt-5.2",
+)
+
+output_guardrail_agent = Agent(
+    name="Confidential Information check",
+    instructions="""Check if the response contains any confidential information that should not be shared.
+        Confidential information include social security numbers, account numbers, passwords,
+        and other sensitive data.
+        Names, addresses, and phone numbers are not considered confidential.""",
+    output_type=ConfidentialInformation,
     model="gpt-5.2",
 )
 
@@ -218,7 +240,8 @@ async def input_guardrail_faul_language(
     logger.debug("Agent's Name: %s", agent.name)
     logger.debug("Input: %s", input)
 
-    result = await Runner.run(guardrail_agent, input, context=context.context)
+    message = input if isinstance(input, str) else str(input[-1])
+    result = await Runner.run(input_guardrail_agent, message, context=context.context)
     is_faul_language = result.final_output.is_faul_language
     return GuardrailFunctionOutput(
         output_info={"found_faul_language": result.final_output},
@@ -247,10 +270,10 @@ async def input_guardrail_faul_language(
 
 
 @output_guardrail
-async def output_guardrail_faul_language(
+async def output_guardrail_confidential(
     context: RunContextWrapper, agent: Agent, output: Any
 ) -> GuardrailFunctionOutput:
-    """Validate agent output for foul language before returning to user.
+    """Validate agent output for confidential information before returning to user.
 
     Args:
         context: RunContextWrapper containing custom context from Runner.run(context=...).
@@ -271,9 +294,9 @@ async def output_guardrail_faul_language(
     logger.debug("Agent's Name: %s", agent.name)
     logger.debug("Output: %s", str(output))
 
-    result = await Runner.run(guardrail_agent, output, context=context.context)
-    is_faul_language = result.final_output.is_faul_language
+    result = await Runner.run(output_guardrail_agent, output, context=context.context)
+    is_confidential = result.final_output.is_confidential
     return GuardrailFunctionOutput(
-        output_info={"found_faul_language": result.final_output},
-        tripwire_triggered=is_faul_language,
+        output_info={"found_confidential": result.final_output},
+        tripwire_triggered=is_confidential,
     )

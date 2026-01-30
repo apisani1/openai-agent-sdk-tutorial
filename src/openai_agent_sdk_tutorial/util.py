@@ -6,6 +6,7 @@ def configure_logging(
     level: str = "INFO",
     format: Optional[str] = None,
     datefmt: Optional[str] = None,
+    log_file: Optional[str] = None,
 ) -> None:
     """
     Configure logging for this application.
@@ -19,6 +20,8 @@ def configure_logging(
         format: Optional custom format string for log messages.
                 If not provided, uses a default format with timestamp and level.
         datefmt: Optional custom date format string.
+        log_file: Optional path to a log file. If provided, logs are written to the file
+                  instead of the console.
 
     Examples:
     ::
@@ -26,6 +29,9 @@ def configure_logging(
         Basic usage - set log level to DEBUG:
         >>> from openai_agent_sdk_tutorial.utils import configure_logging
         >>> configure_logging(level="DEBUG")
+
+        Log to a file:
+        >>> configure_logging(level="DEBUG", log_file="app.log")
 
         Custom format:
         >>> configure_logging(
@@ -49,7 +55,11 @@ def configure_logging(
 
     # Only add handler if root doesn't have one (avoid duplicate logs)
     if not root_logger.handlers:
-        handler = logging.StreamHandler()
+        handler: logging.Handler
+        if log_file:
+            handler = logging.FileHandler(log_file)
+        else:
+            handler = logging.StreamHandler()
         handler.setLevel(log_level)
         handler.setFormatter(
             logging.Formatter(

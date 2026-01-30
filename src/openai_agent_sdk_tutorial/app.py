@@ -30,8 +30,14 @@ def main() -> None:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "--log-file",
+        "-l",
+        type=str,
+        help="Write logs to a file instead of the console",
+    )
     args = parser.parse_args()
-    configure_logging(level="DEBUG" if args.debug else "INFO")
+    configure_logging(level="DEBUG" if args.debug else "INFO", log_file=args.log_file)
     gr.ChatInterface(chat).launch()
 
 

@@ -37,7 +37,6 @@ Three Tool Patterns:
 3. Agent-as-Tool: Convert agents into callable tools for composition
 """
 
-import json
 import logging
 import os
 import re
@@ -52,6 +51,7 @@ from pydantic import BaseModel
 from agents import (
     Agent,
     FunctionTool,
+    Runner,
     ToolGuardrailFunctionOutput,
     ToolInputGuardrail,
     ToolInputGuardrailData,
@@ -104,22 +104,32 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-SENSITIVE_WORDS = [
-    "password",
-    "hack",
-    "exploit",
-    "malware",
-]
+class ConfidentialInformation(BaseModel):
+    """Structured output model for confidential information detection.
 
-EXCLUDED_WORDS = [
-    "SSN",
-    "Social Security Number",
-]
+    Attributes:
+        is_confidential: True if confidential information was detected, False otherwise.
+        details: Description of the detected confidential information, or empty if none found.
+    """
+
+    is_confidential: bool
+    details: str
+
+
+tool_input_guardrail_agent = Agent(
+    name="Confidential Information check",
+    instructions="""Check if the response contains any confidential information that should not be shared.
+        Confidential information include social security numbers, account numbers, passwords,
+        and other sensitive data.
+        Names, addresses, and phone numbers are not considered confidential.""",
+    output_type=ConfidentialInformation,
+    model="gpt-5.2",
+)
 
 
 @tool_input_guardrail
-def reject_sensitive_words(data: ToolInputGuardrailData) -> ToolGuardrailFunctionOutput:
-    """Input guardrail that blocks tool calls containing sensitive words.
+async def reject_confidential_information(data: ToolInputGuardrailData) -> ToolGuardrailFunctionOutput:
+    """Input guardrail that blocks tool calls containing confidential information.
 
     This demonstrates pre-execution validation: inspecting the tool arguments
     before the tool runs.
@@ -139,34 +149,19 @@ def reject_sensitive_words(data: ToolInputGuardrailData) -> ToolGuardrailFunctio
             - reject_content() if sensitive words are found
             - raise_exception() for excluded patterns
     """
-    try:
-        tool_args = json.loads(data.context.tool_arguments) if data.context.tool_arguments else {}
-    except json.JSONDecodeError:
-        logger.warning("Invalid JSON in tool arguments for '%s'", data.context.tool_name)
-        return ToolGuardrailFunctionOutput(output_info="Invalid JSON arguments")
-
-    logger.debug("Validating tool input for '%s': %s", data.context.tool_name, tool_args)
-    # Check for suspicious content
-    for key, value in tool_args.items():
-        value_str = str(value).lower()
-        for word in SENSITIVE_WORDS:
-            if word.lower() in value_str:
-                # Reject tool call and inform the model the function was not called
-                logger.debug("Tool call to '%s' blocked due to sensitive word: %s", data.context.tool_name, word)
-                return ToolGuardrailFunctionOutput.reject_content(
-                    message=f"Tool call blocked: contains '{word}'",
-                    output_info={"blocked_word": word, "argument": key, "tool": data.context.tool_name},
-                )
-        for excluded_word in EXCLUDED_WORDS:
-            if excluded_word.lower() in value_str:
-                # Raise exception to halt execution for excluded patterns
-                logger.debug(
-                    "Tool call to '%s' halted due to sensitive word: %s", data.context.tool_name, excluded_word
-                )
-                return ToolGuardrailFunctionOutput.raise_exception(
-                    output_info={"blocked_pattern": excluded_word, "argument": key, "tool": data.context.tool_name},
-                )
-    logger.debug("Tool call to '%s' accepted", data.context.tool_name)
+    tool_name = data.context.tool_name
+    tool_args = data.context.tool_arguments
+    logger.debug("Validating tool input for '%s': %s", tool_name, tool_args)
+    result = await Runner.run(tool_input_guardrail_agent, tool_args, context=data.context)
+    if result.final_output.is_confidential:
+        logger.debug(
+            "Tool call to '%s' blocked due to confidential information: %s", tool_name, result.final_output.details
+        )
+        return ToolGuardrailFunctionOutput.reject_content(
+            message="Tool call blocked: contains confidential information.",
+            output_info={"confidential_details": result.final_output.details, "tool": tool_name},
+        )
+    logger.debug("Tool call to '%s' accepted", tool_name)
     return ToolGuardrailFunctionOutput(output_info="Input validated")
 
 
@@ -194,16 +189,16 @@ def validate_contains_email(data: ToolOutputGuardrailData) -> ToolGuardrailFunct
             - allow() if output contains valid email
             - reject_content() if validation fails
     """
+    tool_name = data.context.tool_name
     tool_output = str(data.output)
-    logger.debug("Validating tool output for '%s': %s", data.context.tool_name, tool_output)
-
+    logger.debug("Validating tool output for '%s': %s", tool_name, tool_output)
     if not EMAIL_REGEX.search(tool_output):
-        logger.debug("Tool output validation failed: no valid email found in '%s'", tool_output)
+        logger.debug("Tool '%s' output validation failed: no valid email found in '%s'", tool_name, tool_output)
         return ToolGuardrailFunctionOutput.reject_content(
             message="The tool output does not contain a valid email address.",
             output_info={"tool_output": tool_output},
         )
-    logger.debug("Tool output validation passed: valid email found in '%s'", tool_output)
+    logger.debug("Tool '%s' output validation passed: valid email found in '%s'", tool_name, tool_output)
     return ToolGuardrailFunctionOutput.allow()
 
 
@@ -312,7 +307,7 @@ def record_user_details(email: str, name: str = "Name not provided", notes: str 
 # Attach guardrails to the function tool after decoration.
 # The cast() is needed because the decorator returns FunctionTool but the type
 # checker sees it as the original function type.
-record_user_details.tool_input_guardrails = cast(list[ToolInputGuardrail], [reject_sensitive_words])
+record_user_details.tool_input_guardrails = cast(list[ToolInputGuardrail], [reject_confidential_information])
 
 # =============================================================================
 # AGENTS AS TOOLS

@@ -51,8 +51,8 @@ from agents import (
     trace,
 )
 from openai_agent_sdk_tutorial.guardrail import (
-    input_guardrail_faul_language,
-    output_guardrail_confidential,
+    input_guardrail_foul_language,
+    output_guardrail_unprofessional,
 )
 from openai_agent_sdk_tutorial.hook import (
     MyAgentHook,
@@ -97,7 +97,8 @@ def generate_notification_agent_instructions(context: RunContextWrapper, agent: 
         str: The generated system prompt instructions that guide agent behavior.
     """
     # Base instructions define the agent's core behavior and personality
-    base_instructions = """You are a helpful assistant that notifies the user via push notifications.
+    base_instructions = """
+You are a helpful financial services assistant that notifies other departments via push notifications.
 
 Your responsibilities:
 - Help users with their questions and requests
@@ -108,7 +109,7 @@ Your responsibilities:
 Guidelines:
 - Be concise and friendly in your responses
 - Only send notifications for important or requested information
-- Protect user privacy - never share personal information"""
+"""
 
     logger.debug("Running Dynamic Instructions Generation:")
     logger.debug("Context: %s", context.context)
@@ -173,8 +174,8 @@ my_agent = Agent(
     instructions=generate_notification_agent_instructions,
     model="gpt-5.2",
     tools=[send_contact_request_tool],
-    input_guardrails=[input_guardrail_faul_language],
-    output_guardrails=[output_guardrail_confidential],
+    input_guardrails=[input_guardrail_foul_language],
+    output_guardrails=[output_guardrail_unprofessional],
     hooks=MyAgentHook(),
 )
 
@@ -258,4 +259,4 @@ async def run_agent(input: str) -> str:
         logger.error("Max turns exceeded: %s", e)
 
     # Return a user-friendly error message when processing fails
-    return "I'm sorry, but I couldn't process your request at this time."
+    return "I'm sorry, but I couldn't process your request at this time. Please try again later."

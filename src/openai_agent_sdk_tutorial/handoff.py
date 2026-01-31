@@ -1,17 +1,13 @@
 """
 Handoff Module - Agent-to-Agent Control Transfer
-=================================================
 
 This module demonstrates the OpenAI Agent SDK's handoff mechanism, which allows
 one agent to transfer control of the conversation to another specialized agent.
 
 Key Concepts
 ------------
-
 Handoffs vs Agents-as-Tools:
-
 Both patterns enable multi-agent architectures, but they differ fundamentally:
-
 +------------------+----------------------------------+----------------------------------+
 | Aspect           | Handoff                          | Agent-as-Tool                    |
 +==================+==================================+==================================+
@@ -29,18 +25,16 @@ Both patterns enable multi-agent architectures, but they differ fundamentally:
 +------------------+----------------------------------+----------------------------------+
 
 When to Use Handoffs:
-
 - User requests to speak with a different department or supervisor
 - The current agent cannot handle a specific domain (e.g., billing → technical support)
 - Escalation scenarios requiring different permissions or capabilities
 - Language routing (e.g., transfer to Spanish-speaking agent)
 
 Handoff Components:
-
 1. Target Agent: The agent that will receive control
 2. on_handoff callback: Optional function called when handoff occurs
-3. input_type: Pydantic model for structured handoff data
-4. input_filter: Function to modify conversation history before transfer
+3. input_type: Optional Pydantic model for structured handoff data
+4. input_filter: Optional Function to modify conversation history before transfer
 """
 
 import logging
@@ -79,10 +73,6 @@ class EscalationData(BaseModel):
         reason: A description of why the escalation is occurring.
                 This helps the receiving agent understand the context
                 and handle the request appropriately.
-
-    Example:
-        When a user says "I want to speak to your manager", the LLM might
-        generate: EscalationData(reason="User requested supervisor assistance")
     """
 
     reason: str
@@ -102,7 +92,7 @@ class EscalationData(BaseModel):
 # - Performing pre-handoff validation
 
 
-def on_escalation(context: RunContextWrapper, input_data: EscalationData) -> None:
+async def on_escalation(context: RunContextWrapper, input_data: EscalationData) -> None:
     """Callback executed when an escalation handoff occurs.
 
     This function is called after the LLM decides to perform a handoff
@@ -114,10 +104,6 @@ def on_escalation(context: RunContextWrapper, input_data: EscalationData) -> Non
                  Runner.run(context=...). Access custom data via context.context.
         input_data: The structured escalation data populated by the LLM,
                     validated against the EscalationData model.
-
-    Note:
-        This callback is synchronous. For async operations, consider
-        queuing work rather than blocking the handoff.
     """
     logger.debug("Handoff executed. Context: %s", context.context)
     # In production, this might:
@@ -152,55 +138,24 @@ def handoff_input_filter(handoff_input_data: HandoffInputData) -> HandoffInputDa
 
     Args:
         handoff_input_data: Contains all conversation history components:
-            - input_history: Original input before Runner.run()
-            - pre_handoff_items: Items generated before current agent turn
-            - new_items: Current turn items including handoff trigger
-            - input_items: Items to pass to next agent (modifiable)
+            - input_history: Input history before `Runner.run()` was called
+            - pre_handoff_items: Items generated before the agent turn where the handoff was invoked
+            - new_items: New items generated during the current agent turn, including the item that
+                    triggered the handoff
+            - input_items: Items to include in the next agent's input. When set, these items are used
+                    instead of new_items for building the input to the next agent.
             - run_context: Current execution context
 
     Returns:
         HandoffInputData: Modified handoff data. The input_items field
         determines what the target agent receives.
-
-    Example filtering patterns::
-
-        # Remove all tool calls from history
-        filtered_items = [
-            item for item in handoff_input_data.new_items
-            if not isinstance(item, dict) or item.get("type") != "function_call"
-        ]
-
-        # Keep only the last N messages
-        filtered_items = handoff_input_data.new_items[-5:]
-
-        # Summarize history (would need LLM call)
-        summary = await summarize(handoff_input_data.new_items)
     """
-    # Extract components for clarity (and potential modification)
-    # The input history before `Runner.run()` was called.
     input_history = handoff_input_data.input_history
-
-    # The items generated before the agent turn where the handoff was invoked.
     pre_handoff_items = handoff_input_data.pre_handoff_items
-
-    # The new items generated during the current agent turn, including the item
-    # that triggered the handoff and the tool output message representing the
-    # response from the handoff output.
     new_items = handoff_input_data.new_items
-
-    # Items to include in the next agent's input. When set, these items are used
-    # instead of new_items for building the input to the next agent. This allows
-    # filtering duplicates from agent input while preserving all items in
-    # new_items for session history.
     input_items = handoff_input_data.input_items
 
     # Currently passing through unchanged - customize as needed
-    # Example: Filter out function calls and their outputs
-    # filtered_new_items = [
-    #     item for item in new_items
-    #     if not (hasattr(item, 'type') and item.type in ['function_call', 'function_call_output'])
-    # ]
-
     filtered_input_history = input_history
     filtered_pre_handoff_items = pre_handoff_items
     filtered_new_items = new_items
@@ -258,19 +213,14 @@ Guidelines:
 # - on_handoff: Callback when handoff occurs (optional)
 # - tool_name_override: Custom tool name (default: "transfer_to_{agent.name}")
 # - tool_description_override: Custom description for the calling agent
-# - input_type: Pydantic model for structured handoff data
-# - input_filter: Function to modify history before transfer
+# - input_type: Pydantic model for structured handoff data (optional)
+# - input_filter: Function to modify history before transfer (optional)
 
 supervisor_escalation = handoff(
     agent=escalation_agent,
-    # Callback invoked when handoff is triggered
     on_handoff=on_escalation,
-    # Override the default tool name (must match pattern ^[a-zA-Z0-9_-]+$)
     tool_name_override="supervisor_handoff_tool",
-    # Description shown to the calling agent's LLM
     tool_description_override="Tool for escalating requests to a supervisor",
-    # Structured data model for the handoff
     input_type=EscalationData,
-    # Filter to modify conversation history before transfer
     input_filter=handoff_input_filter,
 )

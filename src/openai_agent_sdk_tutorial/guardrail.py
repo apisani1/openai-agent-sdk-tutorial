@@ -64,7 +64,7 @@ Response to User
 ```
 
 Comparison: Agent Guardrails vs Tool Guardrails:
------------------------------------------------
+------------------------------------------------------------------------------
 | Aspect              | Agent Guardrails          | Tool Guardrails           |
 |---------------------|---------------------------|---------------------------|
 | Scope               | Entire conversation       | Single tool call          |
@@ -73,6 +73,7 @@ Comparison: Agent Guardrails vs Tool Guardrails:
 | Decorator           | @input_guardrail          | @tool_input_guardrail     |
 |                     | @output_guardrail         | @tool_output_guardrail    |
 | Recovery options    | None (must catch in app)  | reject_content(), allow() |
+|---------------------|---------------------------|---------------------------|
 """
 
 import logging

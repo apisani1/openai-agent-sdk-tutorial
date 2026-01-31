@@ -44,6 +44,7 @@ Common Use Cases:
 - Cost tracking: Monitor token usage via on_llm_end response metadata
 - Audit trails: Record all agent actions for compliance
 - Custom logic: Modify behavior at specific points (advanced)
+
 Implementation Notes:
 --------------------
 - All hook methods are async and receive RunContextWrapper as first argument
@@ -76,7 +77,6 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # HOOKS OVERVIEW
 # =============================================================================
-#
 # Hooks are callback classes that receive notifications about lifecycle events
 # during an agent run. They're useful for:
 # - Logging and debugging
@@ -104,7 +104,6 @@ logger = logging.getLogger(__name__)
 # | Attached to         | Runner.run(hooks=...)     | Agent(hooks=...)         |
 # | on_handoff receives | from_agent, to_agent      | agent, source            |
 # | Use case            | Global observability      | Agent-specific behavior  |
-#
 # =============================================================================
 
 

@@ -35,6 +35,9 @@ Handoff Components:
 2. on_handoff callback: Optional function called when handoff occurs
 3. input_type: Optional Pydantic model for structured handoff data
 4. input_filter: Optional Function to modify conversation history before transfer
+
+For more details, see:
+https://openai.github.io/openai-agents-python/handoffs/
 """
 
 import logging

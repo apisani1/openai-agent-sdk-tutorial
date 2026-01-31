@@ -34,6 +34,10 @@ Key SDK Classes:
 - RunConfig: Configuration for tracing, model overrides, and workflow metadata
 - SQLiteSession: Persistent storage for conversation history across runs
 - RunContextWrapper: Carries custom context data through the entire execution
+
+For more details, see:
+https://openai.github.io/openai-agents-python/agents/
+https://openai.github.io/openai-agents-python/multi_agent/
 """
 
 import logging
@@ -132,6 +136,8 @@ Guidelines:
 # ------------------------------------------------------------------------------
 # Provides metadata and settings for the agent run, including: model
 # overrides, guardrail, handoff and tracing settings
+#
+# For more details, see:
 # https://openai.github.io/openai-agents-python/ref/run/#agents.run.RunConfig
 
 config = RunConfig(workflow_name="Openai Agent SDK Tutorial")
@@ -139,12 +145,13 @@ config = RunConfig(workflow_name="Openai Agent SDK Tutorial")
 # =============================================================================
 # Session
 # ------------------------------------------------------------------------------
-# Enables conversation persistence across multiple runs.
-# This allows the agent to "remember" previous conversations.
-# The session stores:
+# Enables conversation persistence across multiple runs. This allows the agent to
+# "remember" previous conversations. The session stores:
 # - Conversation history (user messages, assistant responses)
 # - Tool call results
 # - System context
+#
+# For more details, see:
 # https://openai.github.io/openai-agents-python/sessions/
 
 session = SQLiteSession(db_path="memory.db", session_id="shared")
@@ -160,22 +167,23 @@ run_id = str(uuid.uuid4())  # pylint: disable=invalid-name
 #
 # Agent Configuration Options:
 # ---------------------------
-# - name: Human-readable identifier (can contain spaces, used in logs/traces)
+# - name: Human-readable identifier used in logs/traces
 # - instructions: System prompt - can be string or callable for dynamic generation
 # - model: The LLM model to use (e.g., "gpt-5.2", "gpt-4o-mini")
 # - model_settings: Model-specific parameters (temperature, max_tokens, etc.)
-#   https://openai.github.io/openai-agents-python/ref/model_settings/
+#   see: https://openai.github.io/openai-agents-python/ref/model_settings/
 # - tools: List of tools the agent can use
 # - tool_use_behavior: lets you configure how tool use is handled
-#   https://openai.github.io/openai-agents-python/ref/agent/#agents.agent.Agent.tool_use_behavior
-#   https://github.com/openai/openai-agents-python/blob/main/examples/agent_patterns/forcing_tool_use.py
+#   see: https://openai.github.io/openai-agents-python/ref/agent/#agents.agent.Agent.tool_use_behavior
+#        https://github.com/openai/openai-agents-python/blob/main/examples/agent_patterns/forcing_tool_use.py
 # - mcp_servers: A list of MCP tool servers that the agent can use
-#   https://openai.github.io/openai-agents-python/mcp/
+#   see: https://openai.github.io/openai-agents-python/mcp/
 # - output_type: Optional data model (Pydantic TypeAdapter, dataclasses, TypedDict) for structured output
 # - input_guardrails: Validate/filter user input before processing
 # - output_guardrails: Validate/filter agent output before returning
 # - hooks: AgentHooks instance for lifecycle callbacks (agent-specific)
 # - handoffs: List of agents this agent can hand off to (optional)
+
 notification_agent = Agent(
     name="Helpful Notification Agent",
     instructions=generate_notification_agent_instructions,
@@ -211,7 +219,7 @@ notification_agent = Agent(
 #                This is where you pass user info, preferences, feature flags, etc.
 #     - max_turns: Safety limit on agent loop iterations (prevents infinite loops)
 #                   Each "turn" is one LLM call + potential tool execution
-#     - hooks: RunHooks instance for lifecycle callbacks (applies to ALL agents)
+#     - hooks: RunHooks instance for lifecycle callbacks (applies to ALL agents in the run)
 #     - run_config: Configuration for tracing, model overrides, etc.
 #     - session: Session instance for conversation persistence
 #
@@ -222,16 +230,26 @@ notification_agent = Agent(
 #     - input: The original input items i.e. the items before run() was called
 #     - new_items:  The items generated during the agent run. These include things like new messages, tool
 #       calls and their outputs, etc.
-#     https://openai.github.io/openai-agents-python/results/
+#     see: https://openai.github.io/openai-agents-python/results/
 #
 #     Raises:
 #     -------
 #     - InputGuardrailTripwireTriggered: Input failed validation (e.g., inappropriate content)
 #     - OutputGuardrailTripwireTriggered: Output failed validation
 #     - MaxTurnsExceeded: Agent exceeded max_turns limit (possible infinite loop)
+#
+# For more details, see:
+# https://openai.github.io/openai-agents-python/running_agents/
 
-#     The guardrail exceptions contain detailed information:
-#     - `e.guardrail_result.output.output_info`: Custom data from the guardrail
+# =============================================================================
+# TRACING: with trace()
+# =============================================================================
+# trace() creates a span for observability/debugging
+# All operations within this context are grouped under this trace
+# trace_id can be used to group several runs in the tracing dashboard
+#
+# For more details, see:
+# https://openai.github.io/openai-agents-python/tracing/
 
 
 async def run_agent(input: str) -> str:
@@ -244,14 +262,11 @@ async def run_agent(input: str) -> str:
         str: The agent's final response, or an error message if processing failed.
     """
     try:
-        # trace() creates a span for observability/debugging
-        # All operations within this context are grouped under this trace
-        # trace_id can be used to group several runs in the tracing dashboard
         with trace("OpenAI Agent SDK Tutorial", trace_id="trace_" + run_id):
             result = await Runner.run(
                 starting_agent=notification_agent,
                 input=input,
-                context="Hola Precioso",
+                context={"user_id": "user_123", "preferred_language": "en"},
                 max_turns=20,
                 hooks=MyRunHook(),
                 run_config=config,

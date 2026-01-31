@@ -74,6 +74,9 @@ Comparison: Agent Guardrails vs Tool Guardrails:
 |                     | @output_guardrail         | @tool_output_guardrail    |
 | Recovery options    | None (must catch in app)  | reject_content(), allow() |
 |---------------------|---------------------------|---------------------------|
+
+For more detaill see:
+https://openai.github.io/openai-agents-python/guardrails/
 """
 
 import logging
@@ -143,15 +146,13 @@ class UnprofessionalResponse(BaseModel):
 # Pattern: Using an Agent as a Guardrail Validator
 # ------------------------------------------------
 # This is a powerful pattern where we use a separate LLM agent to perform
-# content validation. Benefits:
+# content validation.
 #
+# Benefits:
 # 1. Nuanced Understanding: LLMs can detect subtle policy violations that
 #    rule-based systems miss (sarcasm, context-dependent offense, etc.)
-#
 # 2. Explainability: The agent can explain WHY content was flagged
-#
 # 3. Adaptability: Easy to adjust detection by changing instructions
-#
 # 4. Consistency: Single model for both main agent and guardrail ensures
 #    consistent interpretation of content policies
 #

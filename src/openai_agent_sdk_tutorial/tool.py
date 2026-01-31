@@ -35,6 +35,9 @@ Three Tool Patterns:
 1. Function Tools: Python functions exposed to LLM via @function_tool decorator
 2. Tool Guardrails: Validation layer protecting tool inputs and outputs
 3. Agent-as-Tool: Convert agents into callable tools for composition
+
+For other types of tools and detailed docs, see:
+https://openai.github.io/openai-agents-python/tools/
 """
 
 import logging
@@ -100,7 +103,6 @@ logger = logging.getLogger(__name__)
 # - Agent guardrails: Protect the overall conversation (user input / final output)
 # - Tool guardrails: Protect specific tool calls (arguments / results)
 # - Tool guardrails allow graceful recovery via reject_content()
-#
 # =============================================================================
 
 
@@ -212,7 +214,7 @@ def validate_contains_email(data: ToolOutputGuardrailData) -> ToolGuardrailFunct
 # HOW IT WORKS:
 # -------------
 # 1. The decorator inspects your function's signature (parameters, types, defaults)
-# 2. It parses the docstring (Google-style recommended) for descriptions
+# 2. It parses the docstring for descriptions
 # 3. It generates a JSON schema that tells the LLM how to call your function
 # 4. When the LLM calls the tool, arguments are validated and passed to your function
 #
@@ -239,10 +241,9 @@ def validate_contains_email(data: ToolOutputGuardrailData) -> ToolGuardrailFunct
 # BEST PRACTICES:
 # ---------------
 # - Use type hints for all parameters (enables proper JSON schema generation)
-# - Write Google-style docstrings with Args section (provides parameter descriptions)
+# - Write docstrings with Args section (provides parameter descriptions)
 # - Keep functions focused on a single task
 # - Return serializable types (dict, str, list) that the LLM can understand
-#
 # =============================================================================
 
 
@@ -278,17 +279,6 @@ def push(text: str) -> None:
 )
 def record_user_details(email: str, name: str = "Name not provided", notes: str = "Not provided") -> Dict[str, str]:
     """Record user details for follow-up contact.
-
-    This function demonstrates a complete function tool with:
-    - Type hints: Enable automatic JSON schema generation
-    - Default values: Make parameters optional for the LLM
-    - Docstring: Provides descriptions (though overridden here via decorator)
-    - Return type: Dict for structured, serializable output
-
-    The tool lifecycle with guardrails:
-    1. LLM decides to call this tool with arguments
-    2. tool_input_guardrails run (reject_sensitive_words checks for bad content)
-    3. If input passes, this function executes and the result is sent back to the LLM
 
     Args:
         email: The email address of this user (required - no default)
@@ -347,10 +337,8 @@ record_user_details.tool_input_guardrails = cast(list[ToolInputGuardrail], [reje
 # GUARDRAILS ON AGENT-TOOLS:
 # --------------------------
 # Agent-tools return FunctionTool, so you can attach guardrails:
-#
 #     agent_tool = cast(FunctionTool, my_agent.as_tool(...))
 #     agent_tool.tool_output_guardrails = [my_guardrail]
-#
 # =============================================================================
 
 

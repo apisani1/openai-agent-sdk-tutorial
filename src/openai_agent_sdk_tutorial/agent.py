@@ -54,6 +54,7 @@ from openai_agent_sdk_tutorial.guardrail import (
     input_guardrail_foul_language,
     output_guardrail_unprofessional,
 )
+from openai_agent_sdk_tutorial.handoff import supervisor_escalation
 from openai_agent_sdk_tutorial.hook import (
     MyAgentHook,
     MyRunHook,
@@ -169,11 +170,13 @@ run_id = str(uuid.uuid4())  # pylint: disable=invalid-name
 # - hooks: AgentHooks instance for lifecycle callbacks (agent-specific)
 # - output_type: Pydantic model for structured output (optional)
 # - handoffs: List of agents this agent can hand off to (optional)
-my_agent = Agent(
+notification_agent = Agent(
     name="Helpful Notification Agent",
     instructions=generate_notification_agent_instructions,
     model="gpt-5.2",
     tools=[send_contact_request_tool],
+    handoff_description="Escalate the request if the user asks you to talk to a supervisor",
+    handoffs=[supervisor_escalation],
     input_guardrails=[input_guardrail_foul_language],
     output_guardrails=[output_guardrail_unprofessional],
     hooks=MyAgentHook(),
@@ -237,7 +240,7 @@ async def run_agent(input: str) -> str:
         # trace_id can be used to find group several runs in your tracing dashboard
         with trace("OpenAI Agent SDK Tutorial", trace_id="trace_" + run_id):
             result = await Runner.run(
-                starting_agent=my_agent,
+                starting_agent=notification_agent,
                 input=input,
                 context="Hola Precioso",
                 max_turns=20,

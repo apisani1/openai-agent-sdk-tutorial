@@ -128,25 +128,25 @@ Guidelines:
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+# RunConfig
+# ------------------------------------------------------------------------------
+# Provides metadata and settings for the agent run, including: model
+# overrides, guardrail, handoff and tracing settings
+# https://openai.github.io/openai-agents-python/ref/run/#agents.run.RunConfig
 
-# RunConfig provides metadata and settings for the agent run.
-# - workflow_name: Identifier for tracing and observability dashboards
-# - Can also include: model overrides, tracing configuration, custom metadata
 config = RunConfig(workflow_name="Openai Agent SDK Tutorial")
 
-# SQLiteSession enables conversation persistence across multiple runs.
+# =============================================================================
+# Session
+# ------------------------------------------------------------------------------
+# Enables conversation persistence across multiple runs.
 # This allows the agent to "remember" previous conversations.
-#
-# Key parameters:
-# - db_path: Path to the SQLite database file
-# - session_id: Unique identifier for this conversation session
-#               Use same session_id to continue a conversation
-#               Use different session_id for a new conversation
-#
 # The session stores:
 # - Conversation history (user messages, assistant responses)
 # - Tool call results
 # - System context
+# https://openai.github.io/openai-agents-python/sessions/
+
 session = SQLiteSession(db_path="memory.db", session_id="shared")
 
 # Unique run identifier for tracing - useful for grouping traces by app run
@@ -155,7 +155,6 @@ run_id = str(uuid.uuid4())  # pylint: disable=invalid-name
 # =============================================================================
 # AGENT DEFINITION
 # =============================================================================
-
 # The Agent class is the core abstraction in the OpenAI Agent SDK.
 # It encapsulates everything needed to define an AI assistant's behavior.
 #
@@ -164,11 +163,18 @@ run_id = str(uuid.uuid4())  # pylint: disable=invalid-name
 # - name: Human-readable identifier (can contain spaces, used in logs/traces)
 # - instructions: System prompt - can be string or callable for dynamic generation
 # - model: The LLM model to use (e.g., "gpt-5.2", "gpt-4o-mini")
-# - tools: List of tools the agent can use (function_tool decorated functions)
+# - model_settings: Model-specific parameters (temperature, max_tokens, etc.)
+#   https://openai.github.io/openai-agents-python/ref/model_settings/
+# - tools: List of tools the agent can use
+# - tool_use_behavior: lets you configure how tool use is handled
+#   https://openai.github.io/openai-agents-python/ref/agent/#agents.agent.Agent.tool_use_behavior
+#   https://github.com/openai/openai-agents-python/blob/main/examples/agent_patterns/forcing_tool_use.py
+# - mcp_servers: A list of MCP tool servers that the agent can use
+#   https://openai.github.io/openai-agents-python/mcp/
+# - output_type: Optional data model (Pydantic TypeAdapter, dataclasses, TypedDict) for structured output
 # - input_guardrails: Validate/filter user input before processing
 # - output_guardrails: Validate/filter agent output before returning
 # - hooks: AgentHooks instance for lifecycle callbacks (agent-specific)
-# - output_type: Pydantic model for structured output (optional)
 # - handoffs: List of agents this agent can hand off to (optional)
 notification_agent = Agent(
     name="Helpful Notification Agent",
@@ -186,8 +192,8 @@ notification_agent = Agent(
 # =============================================================================
 # AGENT EXECUTION: Runner.run()
 # =============================================================================
-#    Runner.run() Execution Flow:
-#     ---------------------------
+#     Execution Flow:
+#     --------------
 #     1. Input Guardrails: Validate user input (can block execution)
 #     2. Dynamic Instructions: Generate system prompt if callable
 #     3. Agent Loop:
@@ -196,9 +202,9 @@ notification_agent = Agent(
 #        c. If LLM returns text → proceed to output guardrails
 #     4. Output Guardrails: Validate response (can block output)
 #     5. Return: Final output to caller
-
-#     Runner.run() Parameters:
-#     -----------------------
+#
+#     Parameters:
+#     ----------
 #     - starting_agent: The agent to begin execution with
 #     - input: User message (string or list of message items using Agent SDK format)
 #     - context: Custom data accessible throughout execution via RunContextWrapper.context
@@ -208,9 +214,18 @@ notification_agent = Agent(
 #     - hooks: RunHooks instance for lifecycle callbacks (applies to ALL agents)
 #     - run_config: Configuration for tracing, model overrides, etc.
 #     - session: Session instance for conversation persistence
-
-#     Exception Handling:
-#     ------------------
+#
+#     Returns:
+#     -------
+#     RunResult object containing:
+#     - final_output: The output of the last agent
+#     - input: The original input items i.e. the items before run() was called
+#     - new_items:  The items generated during the agent run. These include things like new messages, tool
+#       calls and their outputs, etc.
+#     https://openai.github.io/openai-agents-python/results/
+#
+#     Raises:
+#     -------
 #     - InputGuardrailTripwireTriggered: Input failed validation (e.g., inappropriate content)
 #     - OutputGuardrailTripwireTriggered: Output failed validation
 #     - MaxTurnsExceeded: Agent exceeded max_turns limit (possible infinite loop)
@@ -227,17 +242,11 @@ async def run_agent(input: str) -> str:
 
     Returns:
         str: The agent's final response, or an error message if processing failed.
-
-    Example:
-        ```python
-        response = await run_agent("Send me a notification about the weather")
-        print(response)  # "I've sent you a push notification about today's weather!"
-        ```
     """
     try:
         # trace() creates a span for observability/debugging
         # All operations within this context are grouped under this trace
-        # trace_id can be used to find group several runs in your tracing dashboard
+        # trace_id can be used to group several runs in the tracing dashboard
         with trace("OpenAI Agent SDK Tutorial", trace_id="trace_" + run_id):
             result = await Runner.run(
                 starting_agent=notification_agent,

@@ -3,6 +3,7 @@
 .env
 
 # Compiled and Cached Files
+*.pyc
 __pycache__/
 .mypy_cache/
 .mypy_cache_test/

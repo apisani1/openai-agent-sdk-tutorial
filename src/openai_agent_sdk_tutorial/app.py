@@ -6,8 +6,9 @@ from dotenv import (
     find_dotenv,
     load_dotenv,
 )
-from openai_agent_sdk_tutorial.agent import run_agent
-from openai_agent_sdk_tutorial.util import configure_logging
+
+from .agent import run_agent
+from .util import configure_logging
 
 
 load_dotenv(find_dotenv(), override=True)

@@ -50,8 +50,9 @@ from agents import (
     RunContextWrapper,
     handoff,
 )
-from openai_agent_sdk_tutorial.hook import MyAgentHook
-from openai_agent_sdk_tutorial.tool import send_contact_request_tool
+
+from .hook import MyAgentHook
+from .tool import send_contact_request_tool
 
 
 logger = logging.getLogger(__name__)

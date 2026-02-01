@@ -27,7 +27,7 @@ def configure_logging(
     ::
 
         Basic usage - set log level to DEBUG:
-        >>> from openai_agent_sdk_tutorial.utils import configure_logging
+        >>> from .utils import configure_logging
         >>> configure_logging(level="DEBUG")
 
         Log to a file:

@@ -54,16 +54,17 @@ from agents import (
     SQLiteSession,
     trace,
 )
-from openai_agent_sdk_tutorial.guardrail import (
+
+from .guardrail import (
     input_guardrail_foul_language,
     output_guardrail_unprofessional,
 )
-from openai_agent_sdk_tutorial.handoff import supervisor_escalation
-from openai_agent_sdk_tutorial.hook import (
+from .handoff import supervisor_escalation
+from .hook import (
     MyAgentHook,
     MyRunHook,
 )
-from openai_agent_sdk_tutorial.tool import send_contact_request_tool
+from .tool import send_contact_request_tool
 
 
 logger = logging.getLogger(__name__)
